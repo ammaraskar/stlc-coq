@@ -24,6 +24,31 @@ Proof.
   - reflexivity.
 Qed.
 
+Lemma equality_implies_types_equal: forall (t1 t2: STLCType),
+    t1 = t2
+    -> types_equal t1 t2 = true.
+Proof.
+  intros.
+  rewrite H. rewrite same_types_are_equal.
+  reflexivity.
+Qed.
+
+Lemma types_equal_implies_equality: forall (t1 t2: STLCType),
+    types_equal t1 t2 = true
+    -> t1 = t2.
+Proof.
+  intros t1.
+  induction t1.
+  - intros. simpl in H. destruct t2.
+    * rewrite andb_true_iff in H. destruct H.
+      apply IHt1_1 in H. apply IHt1_2 in H0. rewrite H. rewrite H0.
+      reflexivity.
+    * discriminate.
+  - intros. simpl. destruct t2.
+    * discriminate.
+    * reflexivity.
+Qed.
+
 Module Import M := FMapList.Make(Nat_as_OT).
 Module P := WProperties_fun Nat_as_OT M.
 Module F := P.F.
@@ -88,17 +113,27 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma inversion_3: forall (env: M.t STLCType) (R arg_type: STLCType)
-                          (f arg: STLCExpr),
-  Some (Arrow arg_type R) = type_of f env
-  -> Some arg_type = type_of arg env
-  -> type_of (App f arg) env = Some R.
+Lemma inversion_3: forall (env: M.t STLCType) (f arg: STLCExpr) (R: STLCType),
+    Some R = type_of (App f arg) env
+    -> exists func_type arg_type, func_type =
+                            (Arrow arg_type R) /\
+                            type_of f env = Some func_type /\
+                            type_of arg env = Some arg_type.
 Proof.
   intros.
-  simpl.
-  rewrite <- H. rewrite <- H0.
-  rewrite -> same_types_are_equal.
-  reflexivity.
+  inversion H.
+  destruct (type_of f) as [f_type|]. 
+  * exists f_type. destruct (type_of arg) as [a_type|]. exists a_type. split.
+    + destruct f_type. inversion H1. destruct types_equal in H1.
+      - inversion H1. apply types_equal_implies_equality. simpl. destruct types_equal.
+        simpl. apply same_types_are_equal. discriminate.
+      - discriminate.
+      - discriminate.
+    + split.
+      - reflexivity.
+      - reflexivity.
+    + discriminate.
+  * discriminate.
 Qed.
 
 Lemma inversion_4: forall (env: M.t STLCType) (R: STLCType),
@@ -119,17 +154,28 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma inversion_6': forall (env: M.t STLCType) (R: STLCType)
+Lemma inversion_6: forall (env: M.t STLCType) (R: STLCType)
                           (cond t e: STLCExpr),
   Some R = type_of (If cond t e) env
-  -> type_of cond env = Some Bool.
+  -> type_of cond env = Some Bool /\ type_of t env = type_of e env /\ type_of t env = Some R.
 Proof.
   intros.
   simpl in H.
   destruct (type_of cond env).
   destruct s.
   - discriminate.
-  - reflexivity.
+  - split.
+    + reflexivity.
+    + split. destruct (type_of t0 env); destruct (type_of e env);
+        try reflexivity; try discriminate.
+      case_eq (types_equal s s0).
+      * rewrite types_equal_implies_equality with (t1 := s) (t2 := s0).
+        destruct types_equal. reflexivity. reflexivity.
+        destruct types_equal. reflexivity. discriminate.
+      * destruct types_equal. discriminate. discriminate.
+      * destruct (type_of t0 env); destruct (type_of e env);
+          try reflexivity; try discriminate.
+        destruct types_equal. symmetry in H. assumption. discriminate.
   - discriminate.
 Qed.
 
@@ -173,15 +219,6 @@ Proof.
             reflexivity.
         + reflexivity.
 Qed.
-
-Definition isValue (E: STLCExpr) : bool :=
-  match E with
-  | True => true
-  | False => true
-  | (Lambda _ _ _) => true
-  | _ => false
-  end
-.
 
 Theorem cannonical_form1: forall (e: STLCExpr) (env: M.t STLCType),
     isValue e = true

@@ -9,3 +9,13 @@ Inductive STLCExpr : Type :=
   | If    : STLCExpr -> STLCExpr -> STLCExpr -> STLCExpr
   | Var   : nat -> STLCExpr
   | App   : STLCExpr -> STLCExpr -> STLCExpr.
+
+
+Definition isValue (E: STLCExpr) : bool :=
+  match E with
+  | True => true
+  | False => true
+  | (Lambda _ _ _) => true
+  | _ => false
+  end
+.
