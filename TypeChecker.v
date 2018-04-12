@@ -189,6 +189,16 @@ Proof.
   - simpl. reflexivity.
 Qed.
 
+Corollary type_versus_arrow' : forall (T t2: STLCType),
+    types_equal T (Arrow t2 T) = false.
+Proof.
+  intros T.
+  induction T.
+  - simpl. intros T.
+    rewrite IHT2. apply andb_false_iff. right. reflexivity.
+  - simpl. reflexivity.
+Qed.
+
 Fact excercise_9_3_2: forall (R: STLCType),
   type_of (App (Var 1) (Var 1)) (M.add 1 R (M.empty STLCType)) = None.
 Proof.
