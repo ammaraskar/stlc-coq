@@ -126,11 +126,12 @@ Proof.
       rewrite F.add_o in H. destruct F.eq_dec in H.
       + rewrite e in n'. contradiction.
       + simpl. rewrite H. reflexivity.
-  * intros. symmetry in H. apply inversion_3 in H. repeat (destruct H). destruct H1.
-    apply IHt1 with (T := x0) (s := s) (x := x) in H.
-    apply IHt2 with (T := x1) (s := s) (x := x) in H1.
-    simpl. rewrite H. rewrite H1.
-    + admit.
+  * intros. symmetry in H. apply inversion_3 in H.
+    destruct H. destruct H. destruct H. destruct H1.
+    apply IHt1 with (T := x0) (s := s) (x := x) in H1.
+    apply IHt2 with (T := x1) (s := s) (x := x) in H2.
+    simpl. rewrite H1. rewrite H2. rewrite H. rewrite same_types_are_equal.
+    reflexivity.
     + assumption.
     + assumption.
 Qed.
