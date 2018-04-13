@@ -96,6 +96,21 @@ Proof.
     + eauto.
 Qed.
 
+Lemma mappingSameKey: forall (env: M.t STLCType) (key key': nat) (val overwrite: STLCType),
+    key = key'
+    -> M.add key val (M.add key overwrite env) = M.add key val env.
+Proof.
+  intros.
+Admitted.
+
+Lemma substitutionLambda:
+  forall (s : STLCType) (n : nat) (t : STLCExpr) (env : M.t STLCType) 
+        (S : STLCType) (s0 : STLCExpr) (T : STLCType) (x : nat),
+    type_of (Lambda s n t) (M.add x S env) = Some T ->
+    type_of s0 env = Some S -> type_of (substitute x s0 (Lambda s n t)) env = Some T.
+Proof.
+Admitted.
+
 (* TAPL page 106 - 107 *)
 Theorem preservationSubstitution: forall (t: STLCExpr) (env: M.t STLCType) (S: STLCType) (s: STLCExpr) (T: STLCType) (x: nat),
     type_of t (M.add x S env) = Some T
@@ -105,7 +120,7 @@ Proof.
   induction t.
   * intros. simpl. simpl in H0. assumption.
   * intros. simpl. simpl in H0. assumption.
-  * intros. simpl. apply IHt with (T := T) (x := x) in H. admit. admit.
+  * apply substitutionLambda.
   * intros. simpl. symmetry in H. apply inversion_6 in H. destruct H. destruct H1.
     specialize (IHt1 env S s Bool x). assert (H2' := H2).
     specialize (IHt2 env S s T x). specialize (IHt3 env S s T x). rewrite <- H1 in IHt3.
@@ -134,4 +149,21 @@ Proof.
     reflexivity.
     + assumption.
     + assumption.
+Qed.
+
+(* TAPL page 107 *)
+Theorem preservation: forall (env: M.t STLCType) (t t': STLCExpr) (T: STLCType),
+    type_of t env = Some T
+    -> evalStep t = Some t'
+    -> type_of t' env = Some T.
+Proof.
+  intros.
+  induction t.
+  - simpl in H0. discriminate.
+  - simpl in H0. discriminate.
+  - simpl in H0. discriminate.
+  - admit.
+  - simpl in H0. discriminate.
+  - simpl in H0. destruct t1; try (simpl in H0; discriminate).
+    * 
 Qed.

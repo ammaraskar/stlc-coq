@@ -113,6 +113,17 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma inversion_2': forall (env: M.t STLCType) (x: nat) (R T1: STLCType) (body: STLCExpr),
+    Some R = type_of (Lambda T1 x body) env
+    -> exists body_type, type_of body (M.add x T1 env) = Some body_type.
+Proof.
+  intros.
+  simpl in H.
+  destruct (type_of body (add x T1 env)).
+  - exists s. reflexivity.
+  - discriminate.
+Qed.
+
 Lemma inversion_3: forall (env: M.t STLCType) (f arg: STLCExpr) (R: STLCType),
     Some R = type_of (App f arg) env
     -> exists func_type arg_type, func_type =
