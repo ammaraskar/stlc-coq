@@ -174,16 +174,20 @@ Proof.
         reflexivity. reflexivity.
       + discriminate.
   - intros. simpl in H0. discriminate.
-  - intros. simpl in H0. destruct t1; try (simpl in H0; discriminate).
-    * assert (H' := H). symmetry in H. apply inversion_3 in H.
-      destruct H. destruct H. destruct H. destruct H1. admit.
-(*
-      apply preservationSubstitution with (s := t2) (S := x0) (t := t1) (T := T) (x := n) in H2.
-      rewrite H in H1.
-      + simpl in H'. admit.
-      + symmetry in H1. apply inversion_2' in H1. destruct H1. admit. *)
-    * destruct evalStep.
-      + admit.
+  - intros. simpl in H0. symmetry in H. apply inversion_3 in H.
+    destruct H. destruct H. destruct H. destruct H1.
+    destruct t1; try (simpl in H0; discriminate); try congruence.
+    * inversion H0. apply preservationSubstitution with (S := x0). 
+      + assert (H1' := H1). symmetry in H1. apply inversion_2' in H1. destruct H1.
+        symmetry in H1'. apply inversion_2 with (R2 := x1) in H1'. congruence.
+        rewrite H1. reflexivity.
+      + congruence.
+    * destruct evalStep. inversion H0. simpl. specialize (IHt1 s x). apply IHt1 in H1.
+      + rewrite H1. rewrite H2. rewrite H. rewrite same_types_are_equal. reflexivity.
+      + reflexivity.
       + discriminate.
-    * admit.
+    * destruct evalStep. inversion H0. simpl. specialize (IHt1 s x). apply IHt1 in H1.
+      + rewrite H1. rewrite H2. rewrite H. rewrite same_types_are_equal. reflexivity.
+      + reflexivity.
+      + discriminate.
 Qed.
