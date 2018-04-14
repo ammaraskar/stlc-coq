@@ -157,13 +157,33 @@ Theorem preservation: forall (env: M.t STLCType) (t t': STLCExpr) (T: STLCType),
     -> evalStep t = Some t'
     -> type_of t' env = Some T.
 Proof.
-  intros.
   induction t.
-  - simpl in H0. discriminate.
-  - simpl in H0. discriminate.
-  - simpl in H0. discriminate.
-  - admit.
-  - simpl in H0. discriminate.
-  - simpl in H0. destruct t1; try (simpl in H0; discriminate).
-    * 
+  - intros. simpl in H0. discriminate.
+  - intros. simpl in H0. discriminate.
+  - intros. simpl in H0. discriminate.
+  - intros. symmetry in H. apply inversion_6 in H. destruct H. destruct H1.
+    simpl in H0. destruct t1; try (simpl in H0; discriminate); try congruence.
+    * destruct evalStep.
+      + inversion H0. simpl. specialize (IHt1 s Bool). apply IHt1 in H.
+        rewrite H. rewrite H2. rewrite <- H1. rewrite H2. rewrite same_types_are_equal.
+        reflexivity. reflexivity.
+      + discriminate.
+    * destruct evalStep.
+      + inversion H0. simpl. specialize (IHt1 s Bool). apply IHt1 in H.
+        rewrite H. rewrite H2. rewrite <- H1. rewrite H2. rewrite same_types_are_equal.
+        reflexivity. reflexivity.
+      + discriminate.
+  - intros. simpl in H0. discriminate.
+  - intros. simpl in H0. destruct t1; try (simpl in H0; discriminate).
+    * assert (H' := H). symmetry in H. apply inversion_3 in H.
+      destruct H. destruct H. destruct H. destruct H1. admit.
+(*
+      apply preservationSubstitution with (s := t2) (S := x0) (t := t1) (T := T) (x := n) in H2.
+      rewrite H in H1.
+      + simpl in H'. admit.
+      + symmetry in H1. apply inversion_2' in H1. destruct H1. admit. *)
+    * destruct evalStep.
+      + admit.
+      + discriminate.
+    * admit.
 Qed.
