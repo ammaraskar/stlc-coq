@@ -110,10 +110,16 @@ Lemma keyOverwrite: forall (e: STLCExpr) (env: M.t STLCType) (key key': nat) (va
 Proof.
 Admitted.
 
+Theorem closedTermTypableInEveryEnv: forall (env: M.t STLCType) (t: STLCType) (e: STLCExpr),
+    type_of e (M.empty STLCType) = Some t
+    -> type_of e env = Some t.
+Proof.
+Admitted.
+
 (* TAPL page 106 - 107 *)
 Theorem preservationSubstitution: forall (t: STLCExpr) (env: M.t STLCType) (S: STLCType) (s: STLCExpr) (T: STLCType) (x: nat),
     type_of t (M.add x S env) = Some T
-    -> type_of s env = Some S
+    -> type_of s (M.empty STLCType) = Some S
     -> type_of (substitute x s t) env = Some T.
 Proof.
   induction t.
@@ -137,7 +143,7 @@ Proof.
       rewrite n0 in H.
       specialize (IHt (M.add n s env) S s0 x0 x). apply IHt in H.
       rewrite H. rewrite H'. reflexivity.
-      + admit.
+      + assumption.
       + symmetry in H. assumption.
   * intros. simpl. symmetry in H. apply inversion_6 in H. destruct H. destruct H1.
     specialize (IHt1 env S s Bool x). assert (H2' := H2).
@@ -153,7 +159,7 @@ Proof.
     destruct (PeanoNat.Nat.eq_dec) with (n := n) (m := x).
     - assert (e' := e). apply PeanoNat.Nat.eqb_eq in e. rewrite e.
       rewrite F.add_o in H. rewrite e' in H. destruct F.eq_dec in H.
-      + congruence.
+      + apply closedTermTypableInEveryEnv with (env := env) in H0. congruence.
       + contradiction.
     - assert (n' := n0). apply eqb_neq in n0. rewrite n0.
       rewrite F.add_o in H. destruct F.eq_dec in H.
@@ -167,13 +173,13 @@ Proof.
     reflexivity.
     + assumption.
     + assumption.
-Admitted.
+Qed.
 
 (* TAPL page 107 *)
 Theorem preservation: forall (env: M.t STLCType) (t t': STLCExpr) (T: STLCType),
-    type_of t env = Some T
+    type_of t (M.empty STLCType) = Some T
     -> evalStep t = Some t'
-    -> type_of t' env = Some T.
+    -> type_of t' (M.empty STLCType) = Some T.
 Proof.
   induction t.
   - intros. simpl in H0. discriminate.
@@ -199,7 +205,7 @@ Proof.
       + assert (H1' := H1). symmetry in H1. apply inversion_2' in H1. destruct H1.
         symmetry in H1'. apply inversion_2 with (R2 := x1) in H1'. congruence.
         rewrite H1. reflexivity.
-      + congruence.
+      + assumption.
     * destruct evalStep. inversion H0. simpl. specialize (IHt1 s x). apply IHt1 in H1.
       + rewrite H1. rewrite H2. rewrite H. rewrite same_types_are_equal. reflexivity.
       + reflexivity.
