@@ -96,18 +96,17 @@ Proof.
     + eauto.
 Qed.
 
-Lemma mappingSameKey: forall (env: M.t STLCType) (key key': nat) (val overwrite: STLCType),
-    key = key'
-    -> M.add key val (M.add key overwrite env) = M.add key val env.
+Lemma permutation: forall (e: STLCExpr) (env: M.t STLCType) (key key': nat) (val val': STLCType),
+    key <> key'
+    -> type_of e (M.add key val (M.add key' val' env))
+       = type_of e (M.add key' val' (M.add key val env)).
 Proof.
   intros.
 Admitted.
 
-Lemma substitutionLambda:
-  forall (s : STLCType) (n : nat) (t : STLCExpr) (env : M.t STLCType) 
-        (S : STLCType) (s0 : STLCExpr) (T : STLCType) (x : nat),
-    type_of (Lambda s n t) (M.add x S env) = Some T ->
-    type_of s0 env = Some S -> type_of (substitute x s0 (Lambda s n t)) env = Some T.
+Lemma keyOverwrite: forall (e: STLCExpr) (env: M.t STLCType) (key key': nat) (val val': STLCType),
+    key = key'
+    -> M.add key val (M.add key' val' env) = M.add key val env.
 Proof.
 Admitted.
 
@@ -120,7 +119,26 @@ Proof.
   induction t.
   * intros. simpl. simpl in H0. assumption.
   * intros. simpl. simpl in H0. assumption.
-  * apply substitutionLambda.
+  * intros.
+    unfold substitute. destruct (PeanoNat.Nat.eq_dec) with (n := n) (m := x).
+    - assert (e' := e). apply PeanoNat.Nat.eqb_eq in e. rewrite e.
+      assert (H' := H). symmetry in H. apply inversion_2' in H. destruct H.
+      apply keyOverwrite with (env := env) (val := s) (val' := S) in e'.
+      rewrite e' in H. simpl. rewrite H.
+      symmetry in H'. apply inversion_2 with (R2 := x0) (R := T) in H'.
+      rewrite H'. reflexivity.
+      + rewrite <- e' in H. auto.
+      + assumption.
+    - assert (n' := n0). apply eqb_neq in n'. rewrite n'. fold substitute.
+      assert (H' := H). symmetry in H. apply inversion_2' in H. destruct H.
+      symmetry in H'. apply inversion_2 with (R2 := x0) (T1 := s) (x := n) (R := T) in H'.
+      simpl.
+      apply permutation with (env := env) (e := t) (val := s) (val' := S) in n0.
+      rewrite n0 in H.
+      specialize (IHt (M.add n s env) S s0 x0 x). apply IHt in H.
+      rewrite H. rewrite H'. reflexivity.
+      + admit.
+      + symmetry in H. assumption.
   * intros. simpl. symmetry in H. apply inversion_6 in H. destruct H. destruct H1.
     specialize (IHt1 env S s Bool x). assert (H2' := H2).
     specialize (IHt2 env S s T x). specialize (IHt3 env S s T x). rewrite <- H1 in IHt3.
@@ -149,7 +167,7 @@ Proof.
     reflexivity.
     + assumption.
     + assumption.
-Qed.
+Admitted.
 
 (* TAPL page 107 *)
 Theorem preservation: forall (env: M.t STLCType) (t t': STLCExpr) (T: STLCType),
