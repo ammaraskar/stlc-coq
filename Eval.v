@@ -110,10 +110,63 @@ Lemma keyOverwrite: forall (e: STLCExpr) (env: M.t STLCType) (key key': nat) (va
 Proof.
 Admitted.
 
-Theorem closedTermTypableInEveryEnv: forall (env: M.t STLCType) (t: STLCType) (e: STLCExpr),
+Fixpoint free_in' (e: STLCExpr) (x: nat) (bound: bool) : bool :=
+  match e with
+  | Lambda _ var body =>
+    if beq_nat x var then
+      free_in' body x bound
+    else
+      free_in' body x true
+  | App e1 e2 =>
+    (free_in' e1 x bound) || (free_in' e2 x bound)
+  | If cond t e =>
+    (free_in' cond x bound) || (free_in' t x bound) || (free_in' e x bound)
+  | Var v =>
+    if (beq_nat v x) then
+      negb bound
+    else
+      false
+  | _ => false
+  end
+.
+
+Definition free_in (e: STLCExpr) (x: nat) : bool := free_in' e x false.
+
+Theorem closedTermNoFreeVars: forall (e: STLCExpr) (t: STLCType),
+    type_of e (M.empty STLCType) = Some t
+    -> forall (x: nat), free_in e x = false.  
+Proof.
+  induction e.
+  - intros. reflexivity.
+  - intros. reflexivity.
+  - intros. unfold free_in. unfold free_in'.
+    destruct PeanoNat.Nat.eqb.
+Qed.
+
+Theorem closedTermTypableInEveryEnv: forall (e: STLCExpr) (t: STLCType) (env: M.t STLCType),
     type_of e (M.empty STLCType) = Some t
     -> type_of e env = Some t.
 Proof.
+  induction e.
+  * intros. simpl. simpl in H. assumption.
+  * intros. simpl. simpl in H. assumption.
+  * intros. symmetry in H. assert (H' := H). apply inversion_2' in H.
+    destruct H. apply inversion_2 with (R2 := x) in H'.
+    + simpl. admit.
+    + symmetry. assumption.
+  * intros. symmetry in H. apply inversion_6 in H.
+    destruct H. destruct H0. assert (H' := H1).
+    apply IHe1 with (env := env) in H. apply IHe2 with (env := env) in H1.
+    simpl. rewrite H. rewrite H1.
+    rewrite H0 in H'. apply IHe3 with (env := env) in H'. rewrite H'.
+    rewrite same_types_are_equal. reflexivity.
+  * intros. simpl in H. apply F.find_mapsto_iff in H. apply F.empty_mapsto_iff in H.
+    contradiction.
+  * intros. symmetry in H. apply inversion_3 in H.
+    destruct H. destruct H. destruct H. destruct H0.
+    apply IHe1 with (env := env) in H0. apply IHe2 with (env := env) in H1.
+    simpl. rewrite H0. rewrite H1. rewrite H. rewrite same_types_are_equal.
+    reflexivity.
 Admitted.
 
 (* TAPL page 106 - 107 *)
