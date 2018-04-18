@@ -83,6 +83,16 @@ Proof.
   intros. congruence. 
 Qed.
 
+Lemma notNoneImpliesSome: forall (t_option: option STLCType),
+    t_option <> None
+    -> exists t, t_option = Some t.
+Proof.
+  intros. 
+  destruct t_option.
+  - exists s. reflexivity.
+  - contradiction.
+Qed.
+
 Lemma eqb_neq: forall (n m: nat),
     n <> m
     -> PeanoNat.Nat.eqb n m = false.
@@ -110,64 +120,94 @@ Lemma keyOverwrite: forall (e: STLCExpr) (env: M.t STLCType) (key key': nat) (va
 Proof.
 Admitted.
 
-Fixpoint free_in' (e: STLCExpr) (x: nat) (bound: bool) : bool :=
+Fixpoint free_in (e: STLCExpr) (x: nat) : bool :=
   match e with
   | Lambda _ var body =>
     if beq_nat x var then
-      free_in' body x bound
+      false
     else
-      free_in' body x true
+      free_in body x 
   | App e1 e2 =>
-    (free_in' e1 x bound) || (free_in' e2 x bound)
+    (free_in e1 x) || (free_in e2 x)
   | If cond t e =>
-    (free_in' cond x bound) || (free_in' t x bound) || (free_in' e x bound)
+    (free_in cond x) || (free_in t x) || (free_in e x)
   | Var v =>
     if (beq_nat v x) then
-      negb bound
+      true
     else
       false
   | _ => false
   end
 .
 
-Definition free_in (e: STLCExpr) (x: nat) : bool := free_in' e x false.
-
-Theorem closedTermNoFreeVars: forall (e: STLCExpr) (t: STLCType),
-    type_of e (M.empty STLCType) = Some t
-    -> forall (x: nat), free_in e x = false.  
+Lemma freeInEnv: forall (e: STLCExpr) (x: nat) (T: STLCType) (env: M.t STLCType),
+    free_in e x = true
+    -> type_of e env = Some T
+    -> exists T', M.find x env = Some T'.
 Proof.
   induction e.
-  - intros. reflexivity.
-  - intros. reflexivity.
-  - intros. unfold free_in. unfold free_in'.
-    destruct PeanoNat.Nat.eqb.
+  - intros. compute in H. discriminate.
+  - intros. compute in H. discriminate.
+  - intros. unfold free_in in H. simpl. fold free_in in H.
+    symmetry in H0. apply inversion_2' in H0. destruct H0.
+    destruct (PeanoNat.Nat.eq_dec) with (n := x) (m := n).
+    + assert (e' := e0). apply PeanoNat.Nat.eqb_eq in e0. rewrite e0 in H.
+      discriminate.
+    + assert (n' := n0). apply eqb_neq in n'. rewrite n' in H.
+      unfold free_in in IHe. apply IHe with (env := (M.add n s env)) (T := x0) in H.
+      destruct H. apply not_eq_sym in n0.
+      apply F.add_neq_in_iff with (elt := STLCType) (m := env) (e := s) in n0.
+      apply someIsNeverNone in H. apply F.in_find_iff in H.
+      apply n0 in H. apply F.in_find_iff in H. 
+      apply notNoneImpliesSome in H.
+      * assumption.
+      * assumption.
+  - intros. unfold free_in in H.  simpl. fold free_in in H.
+    symmetry in H0. apply inversion_6 in H0. destruct H0. destruct H1.
+    apply Bool.orb_true_iff in H. destruct H.
+    + apply Bool.orb_true_iff in H. destruct H.
+      * eapply IHe1 in H; eauto.
+      * eapply IHe2 in H2; eauto.
+    + rewrite H2 in H1. symmetry in H1. eapply IHe3 in H1; eauto.
+  - intros. unfold free_in in H. 
+    destruct (PeanoNat.Nat.eq_dec) with (n := n) (m := x). 
+    + assert (e' := e). apply PeanoNat.Nat.eqb_eq in e. rewrite e in H.
+      simpl in H0.  rewrite e' in H0. exists T. assumption.
+    + apply eqb_neq in n0. rewrite n0 in H. discriminate.
+  - intros. unfold free_in in H. simpl. fold free_in in H.
+    symmetry in H0. apply inversion_3 in H0. destruct H0. destruct H0. destruct H0.
+    destruct H1. apply Bool.orb_true_iff in H. destruct H.
+    + unfold free_in in IHe1. eapply IHe1 in H; eauto.
+    + unfold free_in in IHe2. eapply IHe2 in H; eauto.
 Qed.
 
-Theorem closedTermTypableInEveryEnv: forall (e: STLCExpr) (t: STLCType) (env: M.t STLCType),
+Lemma closedTermHasNoFreeVars: forall (e: STLCExpr) (t: STLCType),
+    type_of e (M.empty STLCType) = Some t
+    -> (forall (x: nat), free_in e x = false).
+Proof.
+  intros.
+  case_eq (free_in e x).
+  - intros. eapply freeInEnv in H0; eauto. destruct H0. compute in H0. discriminate.
+  - intros. reflexivity.
+Qed.
+
+Lemma contextInvariance: forall (e: STLCExpr) (T: STLCType) (env env': M.t STLCType),
+    type_of e env = Some T
+    -> (forall (x: nat), free_in e x = true -> M.find x env = M.find x env')
+    -> type_of e env' = Some T.
+Proof.
+Admitted.
+
+Lemma closedTermTypableInEveryEnv: forall (e: STLCExpr) (t: STLCType) (env: M.t STLCType),
     type_of e (M.empty STLCType) = Some t
     -> type_of e env = Some t.
 Proof.
-  induction e.
-  * intros. simpl. simpl in H. assumption.
-  * intros. simpl. simpl in H. assumption.
-  * intros. symmetry in H. assert (H' := H). apply inversion_2' in H.
-    destruct H. apply inversion_2 with (R2 := x) in H'.
-    + simpl. admit.
-    + symmetry. assumption.
-  * intros. symmetry in H. apply inversion_6 in H.
-    destruct H. destruct H0. assert (H' := H1).
-    apply IHe1 with (env := env) in H. apply IHe2 with (env := env) in H1.
-    simpl. rewrite H. rewrite H1.
-    rewrite H0 in H'. apply IHe3 with (env := env) in H'. rewrite H'.
-    rewrite same_types_are_equal. reflexivity.
-  * intros. simpl in H. apply F.find_mapsto_iff in H. apply F.empty_mapsto_iff in H.
-    contradiction.
-  * intros. symmetry in H. apply inversion_3 in H.
-    destruct H. destruct H. destruct H. destruct H0.
-    apply IHe1 with (env := env) in H0. apply IHe2 with (env := env) in H1.
-    simpl. rewrite H0. rewrite H1. rewrite H. rewrite same_types_are_equal.
-    reflexivity.
-Admitted.
+  intros. assert (H' := H).
+  apply contextInvariance with (env' := env) in H'.
+  + assumption.
+  + intros. apply closedTermHasNoFreeVars with (x := x) in H. 
+    rewrite H0 in H. discriminate.
+Qed.
 
 (* TAPL page 106 - 107 *)
 Theorem preservationSubstitution: forall (t: STLCExpr) (env: M.t STLCType) (S: STLCType) (s: STLCExpr) (T: STLCType) (x: nat),
