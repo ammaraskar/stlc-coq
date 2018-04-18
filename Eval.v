@@ -120,6 +120,14 @@ Lemma keyOverwrite: forall (e: STLCExpr) (env: M.t STLCType) (key key': nat) (va
 Proof.
 Admitted.
 
+(* If two maps have the same mapping for a key. And we add the exact same mapping into
+   both lists. Then find will still return the same result *)
+Lemma addingSameElementToList: forall (m m': M.t STLCType) (key n: nat) (val: STLCType),
+    M.find key m = M.find key m'
+    -> M.find key (M.add n val m) = M.find key (M.add n val m').
+Proof.
+Admitted.
+
 Fixpoint free_in (e: STLCExpr) (x: nat) : bool :=
   match e with
   | Lambda _ var body =>
@@ -191,12 +199,60 @@ Proof.
   - intros. reflexivity.
 Qed.
 
+
 Lemma contextInvariance: forall (e: STLCExpr) (T: STLCType) (env env': M.t STLCType),
     type_of e env = Some T
     -> (forall (x: nat), free_in e x = true -> M.find x env = M.find x env')
     -> type_of e env' = Some T.
 Proof.
-Admitted.
+  induction e; eauto.
+  - intros. symmetry in H. assert (H' := H). 
+    apply inversion_2' in H. destruct H.
+    apply inversion_2 with (R2 := x) in H'.
+    simpl. apply IHe with (env' := (M.add n s env')) in H.
+    rewrite H. rewrite H'.
+    * reflexivity.
+    * intros. unfold free_in in H0. fold free_in in H0. specialize (H0 x0).
+      destruct (PeanoNat.Nat.eq_dec) with (n := x0) (m := n).
+      + symmetry in e0. assert (e' := e0). assert (e'' := e0).
+        apply PeanoNat.Nat.eqb_eq in e'. rewrite <- e' in H0.
+        apply F.add_eq_o with (elt := STLCType) (m := env) (e := s) in e0.
+        apply F.add_eq_o with (elt := STLCType) (m := env') (e := s) in e''.
+        congruence.
+      + intros. apply eqb_neq in n0. rewrite n0 in H0.
+        apply H0 in H1. apply addingSameElementToList with (n := n) (val := s) in H1.
+        assumption.
+    * symmetry. assumption.
+  - intros. symmetry in H. assert (H' := H).
+    apply inversion_6 in H. destruct H. destruct H1. rewrite H2 in H1. symmetry in H1.
+    unfold free_in in H0. simpl in H0. fold free_in in H0.
+    apply IHe1 with (env' := env') in H. simpl.
+    rewrite H.
+    apply IHe2 with (env' := env') in H2. simpl.
+    rewrite H2.
+    apply IHe3 with (env' := env') in H1. simpl.
+    rewrite H1.
+    rewrite same_types_are_equal. reflexivity.
+    * intros. specialize (H0 x). rewrite H3 in H0. rewrite Bool.orb_true_r in H0. auto.
+    * intros. specialize (H0 x). rewrite H3 in H0. rewrite Bool.orb_true_r in H0. auto.
+    * intros. specialize (H0 x). rewrite H3 in H0. rewrite Bool.orb_true_l in H0. auto.
+  - intros. assert (H' := H).
+    apply inversion_1 in H. specialize (H0 n).
+    case_eq (free_in (Var n) n).
+    * intros. apply H0 in H1. simpl. congruence.
+    * intros. simpl in H1. cut (n = n).
+      + intros. apply PeanoNat.Nat.eqb_eq in H2. rewrite H2 in H1. discriminate.
+      + reflexivity.
+  - intros. symmetry in H. assert (H' := H).
+    apply inversion_3 in H. destruct H. destruct H. destruct H. destruct H1.
+    unfold free_in in H0. simpl in H0. fold free_in in H0.
+    apply IHe1 with (env' := env') in H1. simpl.
+    rewrite H1.
+    apply IHe2 with (env' := env') in H2. simpl.
+    rewrite H2. rewrite H. rewrite same_types_are_equal. reflexivity.
+    * intros. specialize (H0 x1). rewrite H3 in H0. rewrite Bool.orb_true_r in H0. auto.
+    * intros. specialize (H0 x1). rewrite H3 in H0. rewrite Bool.orb_true_l in H0. auto.
+Qed.
 
 Lemma closedTermTypableInEveryEnv: forall (e: STLCExpr) (t: STLCType) (env: M.t STLCType),
     type_of e (M.empty STLCType) = Some t
