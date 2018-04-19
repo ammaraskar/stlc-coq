@@ -19,19 +19,6 @@ Proof.
   - contradiction.
 Qed.
 
-(*Lemma eqb_neq: forall (n m: nat),
-    n <> m
-    -> PeanoNat.Nat.eqb n m = false.
-Proof.
-  induction n.
-  - intros. unfold PeanoNat.Nat.eqb. destruct m.
-    + contradiction.
-    + reflexivity.
-  - intros. destruct m.
-    + reflexivity.
-    + eauto.
-Qed.*)
-
 Lemma addingSameElementToMaps: forall (m m': M.t STLCType) (key n: nat) (val: STLCType),
     M.Equal m m'
     -> M.Equal (M.add n val m) (M.add n val m').
