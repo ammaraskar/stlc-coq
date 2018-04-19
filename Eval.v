@@ -1,5 +1,6 @@
 Require Import STLC.
 Require Import TypeChecker.
+Require Import AdditionalFacts.
 Require Import EqNat.
 
 Fixpoint substitute (var: nat) (e body: STLCExpr) :=
@@ -76,58 +77,6 @@ Proof.
     * rewrite H1 in H2'. destruct H2. simpl. rewrite H2. destruct e1; eauto.
 Qed.
 
-Lemma someIsNeverNone: forall (t_option: option STLCType) (t: STLCType),
-    t_option = Some t
-    -> t_option <> None.
-Proof.
-  intros. congruence. 
-Qed.
-
-Lemma notNoneImpliesSome: forall (t_option: option STLCType),
-    t_option <> None
-    -> exists t, t_option = Some t.
-Proof.
-  intros. 
-  destruct t_option.
-  - exists s. reflexivity.
-  - contradiction.
-Qed.
-
-Lemma eqb_neq: forall (n m: nat),
-    n <> m
-    -> PeanoNat.Nat.eqb n m = false.
-Proof.
-  induction n.
-  - intros. unfold PeanoNat.Nat.eqb. destruct m.
-    + contradiction.
-    + reflexivity.
-  - intros. destruct m.
-    + reflexivity.
-    + eauto.
-Qed.
-
-Lemma permutation: forall (e: STLCExpr) (env: M.t STLCType) (key key': nat) (val val': STLCType),
-    key <> key'
-    -> type_of e (M.add key val (M.add key' val' env))
-       = type_of e (M.add key' val' (M.add key val env)).
-Proof.
-  intros.
-Admitted.
-
-Lemma keyOverwrite: forall (e: STLCExpr) (env: M.t STLCType) (key key': nat) (val val': STLCType),
-    key = key'
-    -> M.add key val (M.add key' val' env) = M.add key val env.
-Proof.
-Admitted.
-
-(* If two maps have the same mapping for a key. And we add the exact same mapping into
-   both lists. Then find will still return the same result *)
-Lemma addingSameElementToList: forall (m m': M.t STLCType) (key n: nat) (val: STLCType),
-    M.find key m = M.find key m'
-    -> M.find key (M.add n val m) = M.find key (M.add n val m').
-Proof.
-Admitted.
-
 Fixpoint free_in (e: STLCExpr) (x: nat) : bool :=
   match e with
   | Lambda _ var body =>
@@ -161,7 +110,7 @@ Proof.
     destruct (PeanoNat.Nat.eq_dec) with (n := x) (m := n).
     + assert (e' := e0). apply PeanoNat.Nat.eqb_eq in e0. rewrite e0 in H.
       discriminate.
-    + assert (n' := n0). apply eqb_neq in n'. rewrite n' in H.
+    + assert (n' := n0). apply PeanoNat.Nat.eqb_neq in n'. rewrite n' in H.
       unfold free_in in IHe. apply IHe with (env := (M.add n s env)) (T := x0) in H.
       destruct H. apply not_eq_sym in n0.
       apply F.add_neq_in_iff with (elt := STLCType) (m := env) (e := s) in n0.
@@ -181,7 +130,7 @@ Proof.
     destruct (PeanoNat.Nat.eq_dec) with (n := n) (m := x). 
     + assert (e' := e). apply PeanoNat.Nat.eqb_eq in e. rewrite e in H.
       simpl in H0.  rewrite e' in H0. exists T. assumption.
-    + apply eqb_neq in n0. rewrite n0 in H. discriminate.
+    + apply PeanoNat.Nat.eqb_neq in n0. rewrite n0 in H. discriminate.
   - intros. unfold free_in in H. simpl. fold free_in in H.
     symmetry in H0. apply inversion_3 in H0. destruct H0. destruct H0. destruct H0.
     destruct H1. apply Bool.orb_true_iff in H. destruct H.
@@ -219,7 +168,7 @@ Proof.
         apply F.add_eq_o with (elt := STLCType) (m := env) (e := s) in e0.
         apply F.add_eq_o with (elt := STLCType) (m := env') (e := s) in e''.
         congruence.
-      + intros. apply eqb_neq in n0. rewrite n0 in H0.
+      + intros. apply PeanoNat.Nat.eqb_neq in n0. rewrite n0 in H0.
         apply H0 in H1. apply addingSameElementToList with (n := n) (val := s) in H1.
         assumption.
     * symmetry. assumption.
@@ -279,21 +228,24 @@ Proof.
     - assert (e' := e). apply PeanoNat.Nat.eqb_eq in e. rewrite e.
       assert (H' := H). symmetry in H. apply inversion_2' in H. destruct H.
       apply keyOverwrite with (env := env) (val := s) (val' := S) in e'.
-      rewrite e' in H. simpl. rewrite H.
+      apply sameEnvSameType with (e := t) (T := x0) in e'.
+      simpl. rewrite e'.
       symmetry in H'. apply inversion_2 with (R2 := x0) (R := T) in H'.
       rewrite H'. reflexivity.
-      + rewrite <- e' in H. auto.
+      + rewrite <- e' in H. rewrite e' in H. auto.
       + assumption.
-    - assert (n' := n0). apply eqb_neq in n'. rewrite n'. fold substitute.
+      + assumption.
+    - assert (n' := n0). apply PeanoNat.Nat.eqb_neq in n'. rewrite n'. fold substitute.
       assert (H' := H). symmetry in H. apply inversion_2' in H. destruct H.
       symmetry in H'. apply inversion_2 with (R2 := x0) (T1 := s) (x := n) (R := T) in H'.
       simpl.
-      apply permutation with (env := env) (e := t) (val := s) (val' := S) in n0.
-      rewrite n0 in H.
-      specialize (IHt (M.add n s env) S s0 x0 x). apply IHt in H.
-      rewrite H. rewrite H'. reflexivity.
+      apply permutation with (env := env) (val := s) (val' := S) in n0.
+      apply sameEnvSameType with (e := t) (T := x0) in n0.
+      specialize (IHt (M.add n s env) S s0 x0 x). apply IHt in n0.
+      rewrite n0. rewrite H'. reflexivity.
       + assumption.
-      + symmetry in H. assumption.
+      + assumption.
+      + symmetry. assumption.
   * intros. simpl. symmetry in H. apply inversion_6 in H. destruct H. destruct H1.
     specialize (IHt1 env S s Bool x). assert (H2' := H2).
     specialize (IHt2 env S s T x). specialize (IHt3 env S s T x). rewrite <- H1 in IHt3.
@@ -310,7 +262,7 @@ Proof.
       rewrite F.add_o in H. rewrite e' in H. destruct F.eq_dec in H.
       + apply closedTermTypableInEveryEnv with (env := env) in H0. congruence.
       + contradiction.
-    - assert (n' := n0). apply eqb_neq in n0. rewrite n0.
+    - assert (n' := n0). apply PeanoNat.Nat.eqb_neq in n0. rewrite n0.
       rewrite F.add_o in H. destruct F.eq_dec in H.
       + rewrite e in n'. contradiction.
       + simpl. rewrite H. reflexivity.
