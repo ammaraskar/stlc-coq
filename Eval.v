@@ -45,6 +45,17 @@ Fixpoint evalStep (e: STLCExpr) : (option STLCExpr) :=
   end
 .
 
+Fixpoint eval (n: nat) (e: STLCExpr) : option STLCExpr :=
+  if isValue e then Some e else
+    match n with
+    | O => None
+    | S n => eval n e
+    end
+.
+
+Definition halts (e: STLCExpr) :=
+  exists n e', eval n e = Some e'.
+
 (* TAPL page 105-106 *)
 Theorem progress: forall (e: STLCExpr) (T: STLCType),
     type_of e (M.empty STLCType) = Some T
