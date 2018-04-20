@@ -401,6 +401,15 @@ Proof.
   - simpl in H. destruct H. assumption.
 Qed.
 
+Lemma reducibilityInversion: forall (T: STLCType) (t: STLCExpr),
+    reducibilitySet T t
+    -> type_of t (M.empty STLCType) = Some T.
+Proof.
+  destruct T.
+  - intros. simpl in H. destruct H. assumption.
+  - intros. simpl in H. destruct H. assumption.
+Qed.
+
 Lemma steppingPreservesReducibility: forall (T: STLCType) (t t': STLCExpr),
     type_of t (M.empty STLCType) = Some T /\ evalStep t = Some t'
     -> (reducibilitySet T t <-> reducibilitySet T t').
@@ -412,14 +421,34 @@ Proof.
       split. assumption.
       split. apply evalPreservesHalting in H0. assumption.
       assumption.
-      intros. specialize (H3 s). apply H3 in H4. admit.
-      assumption.
+      intros. apply H3 in H4.
+      specialize (IHT2 (App t s) (App t' s)). assert (H' := H4).
+      apply reducibilityInversion in H4. cut (evalStep (App t s) = Some (App t' s)).
+      intros.
+      cut (type_of (App t s) (M.empty STLCType) = Some T2 /\ evalStep (App t s) = Some (App t' s)).
+      intros. apply IHT2 in H6. apply H6 in H'. assumption.
+      split. assumption. assumption.
+      simpl. destruct t; try (simpl in H0; discriminate).
+      * rewrite H0. reflexivity.
+      * rewrite H0. reflexivity.
+      * assumption.
     + intros. simpl in H1. destruct H1. destruct H2.
       simpl.
       split. assumption.
       split. apply evalPreservesHalting' with (t := t) in H2. assumption.
       assumption.
-      admit.
+      intros. apply H3 in H4.
+      specialize (IHT2 (App t s) (App t' s)). assert (H' := H4).
+      apply reducibilityInversion in H4. cut (evalStep (App t s) = Some (App t' s)).
+      intros.
+      cut (type_of (App t s) (M.empty STLCType) = Some T2 /\ evalStep (App t s) = Some (App t' s)).
+      intros. apply IHT2 in H6. apply H6 in H'. assumption.
+      split. simpl. rewrite H. symmetry in H4. apply inversion_3 in H4.
+      destruct H4. destruct H4. destruct H4. destruct H6. rewrite H7. rewrite H6 in H1.
+      inversion H1. rewrite H9 in H4. apply equality_implies_types_equal in H4.
+      simpl in H4. apply Bool.andb_true_iff in H4. destruct H4. rewrite H4. reflexivity.
+      assumption.
+      simpl. destruct t; try (simpl in H0; discriminate); try (rewrite H0; reflexivity).
   - intros. destruct H. split.
     + intros. simpl in H1. simpl. apply preservation with (t' := t') in H.
       split. assumption. apply evalPreservesHalting in H0.
