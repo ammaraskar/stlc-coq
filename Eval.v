@@ -49,7 +49,10 @@ Fixpoint eval (n: nat) (e: STLCExpr) : option STLCExpr :=
   if isValue e then Some e else
     match n with
     | O => None
-    | S n => eval n e
+    | S n => match evalStep e with
+            | Some e' => eval n e'
+            | None => None
+            end
     end
 .
 
@@ -288,7 +291,7 @@ Proof.
 Qed.
 
 (* TAPL page 107 *)
-Theorem preservation: forall (env: M.t STLCType) (t t': STLCExpr) (T: STLCType),
+Theorem preservation: forall (t t': STLCExpr) (T: STLCType),
     type_of t (M.empty STLCType) = Some T
     -> evalStep t = Some t'
     -> type_of t' (M.empty STLCType) = Some T.
@@ -326,4 +329,104 @@ Proof.
       + rewrite H1. rewrite H2. rewrite H. rewrite same_types_are_equal. reflexivity.
       + reflexivity.
       + discriminate.
+Qed.
+
+Theorem moreComputationSameResult: forall (n n': nat) (e e': STLCExpr),
+  eval n e = Some e'
+  -> n' >= n
+  -> eval n' e = Some e'.
+Proof.
+  induction n.
+  - intros. simpl in H. destruct n'.
+    + simpl. destruct (isValue e). assumption. discriminate.
+    + simpl. destruct (isValue e). assumption. discriminate.
+  - intros. simpl in H. destruct n'.
+    + simpl. destruct (isValue e).
+      * assumption. 
+      * unfold ge in H0. apply max_l in H0. simpl in H0. discriminate.
+    + simpl. destruct (isValue e).
+      * assumption.
+      *  unfold ge in H0. apply le_pred in H0. simpl in H0.
+         destruct (evalStep e).
+         apply IHn with (n' := n') in H. assumption. assumption. discriminate.
+Qed.
+
+Theorem evalPreservesHalting: forall (t t': STLCExpr),
+    halts t
+    -> evalStep t = Some t'
+    -> halts t'.
+Proof.
+  intros.
+  unfold halts in H. destruct H. destruct H.
+  unfold halts. exists (x - 1), x0.
+  induction x.
+  - simpl in H. simpl. destruct t; discriminate.
+  - simpl in H. destruct t; try (discriminate).
+    + rewrite H0 in H. simpl in H. simpl. rewrite PeanoNat.Nat.sub_0_r. assumption.
+    + rewrite H0 in H. simpl in H. simpl. rewrite PeanoNat.Nat.sub_0_r. assumption.
+Qed.
+
+Theorem evalPreservesHalting': forall (t t': STLCExpr),
+    halts t'
+    -> evalStep t = Some t'
+    -> halts t.
+Proof.
+  intros.
+  unfold halts in H. destruct H. destruct H.
+  unfold halts. exists (1 + x), x0. simpl.
+  destruct t; try (discriminate).
+  - rewrite H0. simpl. assumption.
+  - rewrite H0. simpl. assumption.
+Qed.
+
+Fixpoint reducibilitySet (T: STLCType) (t: STLCExpr) : Prop :=
+  match T with
+  | Bool =>
+      type_of t (M.empty STLCType) = Some Bool /\
+      halts t
+  | Arrow T1 T2 =>
+      type_of t (M.empty STLCType) = Some (Arrow T1 T2) /\
+      halts t /\
+      (forall s, reducibilitySet T1 s -> reducibilitySet T2 (App t s))
+  end
+.
+
+Lemma reducibilitySetInclusionHalts: forall (T: STLCType) (t: STLCExpr),
+    reducibilitySet T t
+    -> halts t.
+Proof.
+  intros.
+  destruct T.
+  - simpl in H. destruct H. destruct H0. assumption.
+  - simpl in H. destruct H. assumption.
+Qed.
+
+Lemma steppingPreservesReducibility: forall (T: STLCType) (t t': STLCExpr),
+    type_of t (M.empty STLCType) = Some T /\ evalStep t = Some t'
+    -> (reducibilitySet T t <-> reducibilitySet T t').
+Proof.
+  induction T.
+  - intros. destruct H. split.
+    + intros. simpl in H1. destruct H1. destruct H2.
+      simpl. apply preservation with (t' := t') in H.
+      split. assumption.
+      split. apply evalPreservesHalting in H0. assumption.
+      assumption.
+      intros. specialize (H3 s). apply H3 in H4. admit.
+      assumption.
+    + intros. simpl in H1. destruct H1. destruct H2.
+      simpl.
+      split. assumption.
+      split. apply evalPreservesHalting' with (t := t) in H2. assumption.
+      assumption.
+      admit.
+  - intros. destruct H. split.
+    + intros. simpl in H1. simpl. apply preservation with (t' := t') in H.
+      split. assumption. apply evalPreservesHalting in H0.
+      * assumption.
+      * destruct H1. assumption.
+      * assumption.
+    + intros. simpl in H1. simpl. split. assumption.
+      apply evalPreservesHalting' in H0. assumption.
+      destruct H1. assumption.
 Qed.
