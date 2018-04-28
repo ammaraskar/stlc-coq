@@ -331,7 +331,7 @@ Proof.
       + discriminate.
 Qed.
 
-Theorem moreComputationSameResult: forall (n n': nat) (e e': STLCExpr),
+Lemma moreComputationSameResult: forall (n n': nat) (e e': STLCExpr),
   eval n e = Some e'
   -> n' >= n
   -> eval n' e = Some e'.
@@ -351,7 +351,7 @@ Proof.
          apply IHn with (n' := n') in H. assumption. assumption. discriminate.
 Qed.
 
-Theorem evalPreservesHalting: forall (t t': STLCExpr),
+Lemma evalPreservesHalting: forall (t t': STLCExpr),
     halts t
     -> evalStep t = Some t'
     -> halts t'.
@@ -366,7 +366,7 @@ Proof.
     + rewrite H0 in H. simpl in H. simpl. rewrite PeanoNat.Nat.sub_0_r. assumption.
 Qed.
 
-Theorem evalPreservesHalting': forall (t t': STLCExpr),
+Lemma evalPreservesHalting': forall (t t': STLCExpr),
     halts t'
     -> evalStep t = Some t'
     -> halts t.
@@ -458,4 +458,134 @@ Proof.
     + intros. simpl in H1. simpl. split. assumption.
       apply evalPreservesHalting' in H0. assumption.
       destruct H1. assumption.
+Qed.
+
+Lemma evalPreservesType: forall (x: nat) (e e': STLCExpr) (T: STLCType),
+    eval x e = Some e'
+    -> type_of e (M.empty STLCType) = Some T
+    -> type_of e' (M.empty STLCType) = Some T.
+Proof.
+  induction x; intros.
+  - simpl in H. destruct (isValue e).
+    + inversion H. rewrite <- H2. assumption.
+    + discriminate.
+  - simpl in H. destruct (isValue e).
+    + inversion H. rewrite <- H2. assumption.
+    + case_eq (evalStep e).
+      * intros. rewrite H1 in H. apply IHx with (T := T) in H. assumption.
+        eapply preservation in H1; eauto.
+      * intros. rewrite H1 in H. discriminate.
+Qed.
+
+Lemma evalReturnsValue: forall (x: nat) (e e': STLCExpr),
+    eval x e = Some e'
+    -> isValue e' = true.
+Proof.
+  induction x; intros.
+  - simpl in H. case_eq (isValue e).
+    + intros. rewrite H0 in H. inversion H. rewrite <- H2. assumption.
+    + intros. rewrite H0 in H. discriminate.
+  - simpl in H. case_eq (isValue e).
+    + intros. rewrite H0 in H. inversion H. rewrite <- H2. assumption.
+    + intros. rewrite H0 in H. destruct (evalStep e).
+      * apply IHx in H. assumption.
+      * discriminate.
+Qed.
+
+Lemma reducibilityOfIf: forall (T: STLCType) (c t e: STLCExpr),
+    reducibilitySet Bool c ->
+    reducibilitySet T t ->
+    reducibilitySet T e ->
+    reducibilitySet T (If c t e).
+Proof.
+  induction T; intros.
+  - destruct H. destruct H0. destruct H3. destruct H1.
+    simpl. split; try (split).
+    + rewrite H. rewrite H0. rewrite H1. rewrite same_types_are_equal. reflexivity.
+    + admit.
+    + intros. assert (H6' := H6). apply H4 in H6.
+      destruct H5. apply H7 in H6'. admit.
+  - destruct H. destruct H0. destruct H1. simpl. split.
+    + rewrite H. rewrite H0. rewrite H1. rewrite same_types_are_equal. reflexivity.
+    + admit.
+Admitted.
+
+Lemma substitutionPreservesReducibility: forall (t v: STLCExpr) (x: nat) (T Tx: STLCType),
+    type_of t (M.add x Tx (M.empty STLCType)) = Some T
+    -> isValue v = true
+    -> type_of v (M.empty STLCType) = Some Tx
+    -> reducibilitySet Tx v
+    -> reducibilitySet T (substitute x v t).
+Proof.
+  induction t.
+  - intros. simpl. simpl in H. inversion H. simpl. split. reflexivity.
+    unfold halts. exists 0, True. reflexivity.
+  - intros. simpl. simpl in H. inversion H. simpl. split. reflexivity.
+    unfold halts. exists 0, False. reflexivity.
+  - intros. admit.
+  - intros. symmetry in H. apply inversion_6 in H. destruct H. destruct H3.
+    rewrite H4 in H3. symmetry in H3.
+    eapply IHt1 in H; eauto. eapply IHt2 in H4; eauto. eapply IHt3 in H3; eauto.
+    simpl. destruct T.
+    + simpl. apply reducibilityInversion in H. rewrite H.
+      apply reducibilityInversion in H4. rewrite H4.
+      apply reducibilityInversion in H3. rewrite H3.
+      split.
+      * rewrite same_types_are_equal. reflexivity.
+      * admit.
+    + simpl. apply reducibilityInversion in H. rewrite H.
+      apply reducibilityInversion in H4. rewrite H4.
+      apply reducibilityInversion in H3. rewrite H3.
+      simpl. split.
+      * reflexivity.
+      * admit.
+  - intros. simpl. simpl in H. destruct PeanoNat.Nat.eq_dec with (n := n) (m := x).
+    + assert (e' := e). apply PeanoNat.Nat.eqb_eq in e'. rewrite e'. symmetry in e.
+      apply F.add_eq_o with (elt := STLCType) (m := (M.empty STLCType)) (e := Tx) in e.
+      rewrite e in H. inversion H. rewrite <- H4. assumption.
+    + assert (n' := n0). apply PeanoNat.Nat.eqb_neq in n0. rewrite n0.
+      apply not_eq_sym in n'.
+      apply F.add_neq_o with (elt := STLCType) (m := (M.empty STLCType)) (e := Tx) in n'.
+      rewrite n' in H. compute in H. discriminate.
+  - intros. simpl. symmetry in H. apply inversion_3 in H.
+    destruct H. destruct H. destruct H. destruct H3. 
+    eapply IHt1 in H3; eauto. eapply IHt2 in H4; eauto. rewrite H in H3.
+    simpl in H3. destruct H3. destruct H5. apply H6 in H4. assumption.
+Admitted.
+
+Theorem allTypedTermsReducable: forall (e: STLCExpr) (T: STLCType),
+    type_of e (M.empty STLCType) = Some T
+    -> reducibilitySet T e.
+Proof.
+  induction e; intros.
+  - simpl in H. inversion H. simpl. split.
+    + reflexivity.
+    + unfold halts. exists 1, True. simpl. reflexivity.
+  - simpl in H. inversion H. simpl. split.
+    + reflexivity.
+    + unfold halts. exists 1, False. simpl. reflexivity.
+  - symmetry in H. assert (H' := H). apply inversion_2' in H. destruct H. assert (H1 := H).
+    eapply inversion_2 in H'; eauto. rewrite H'. simpl. rewrite H.
+    split. reflexivity.
+    split. exists 1, (Lambda s n e). simpl. reflexivity.
+    intros. admit.
+  - symmetry in H. apply inversion_6 in H. destruct H. destruct H0.
+    rewrite H1 in H0. symmetry in H0. apply IHe1 in H. apply IHe2 in H1. apply IHe3 in H0.
+    eapply reducibilityOfIf; eauto.
+  - apply inversion_1 in H. compute in H. discriminate.
+  - symmetry in H. apply inversion_3 in H. destruct H. destruct H. destruct H. destruct H0.
+    apply IHe1 in H0. apply IHe2 in H1.
+    rewrite H in H0. simpl in H0. destruct H0. destruct H2.
+    apply H3 in H1. assumption.
+Admitted.
+
+Theorem strongNormalization: forall (e: STLCExpr) (T: STLCType),
+    type_of e (M.empty STLCType) = Some T
+    -> halts e.
+Proof.
+  intros.
+  apply allTypedTermsReducable in H.
+  destruct T.
+  - simpl in H. destruct H. destruct H0. assumption.
+  - simpl in H. destruct H. assumption.
 Qed.
