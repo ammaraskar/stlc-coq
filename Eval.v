@@ -411,11 +411,12 @@ Proof.
 Qed.
 
 Lemma steppingPreservesReducibility: forall (T: STLCType) (t t': STLCExpr),
-    type_of t (M.empty STLCType) = Some T /\ evalStep t = Some t'
+    type_of t (M.empty STLCType) = Some T
+    -> evalStep t = Some t'
     -> (reducibilitySet T t <-> reducibilitySet T t').
 Proof.
   induction T.
-  - intros. destruct H. split.
+  - intros. split.
     + intros. simpl in H1. destruct H1. destruct H2.
       simpl. apply preservation with (t' := t') in H.
       split. assumption.
@@ -425,9 +426,7 @@ Proof.
       specialize (IHT2 (App t s) (App t' s)). assert (H' := H4).
       apply reducibilityInversion in H4. cut (evalStep (App t s) = Some (App t' s)).
       intros.
-      cut (type_of (App t s) (M.empty STLCType) = Some T2 /\ evalStep (App t s) = Some (App t' s)).
-      intros. apply IHT2 in H6. apply H6 in H'. assumption.
-      split. assumption. assumption.
+      eapply IHT2 in H5; eauto. symmetry in H5. apply H5. assumption.
       simpl. destruct t; try (simpl in H0; discriminate).
       * rewrite H0. reflexivity.
       * rewrite H0. reflexivity.
@@ -441,23 +440,23 @@ Proof.
       specialize (IHT2 (App t s) (App t' s)). assert (H' := H4).
       apply reducibilityInversion in H4. cut (evalStep (App t s) = Some (App t' s)).
       intros.
-      cut (type_of (App t s) (M.empty STLCType) = Some T2 /\ evalStep (App t s) = Some (App t' s)).
-      intros. apply IHT2 in H6. apply H6 in H'. assumption.
-      split. simpl. rewrite H. symmetry in H4. apply inversion_3 in H4.
-      destruct H4. destruct H4. destruct H4. destruct H6. rewrite H7. rewrite H6 in H1.
-      inversion H1. rewrite H9 in H4. apply equality_implies_types_equal in H4.
-      simpl in H4. apply Bool.andb_true_iff in H4. destruct H4. rewrite H4. reflexivity.
-      assumption.
-      simpl. destruct t; try (simpl in H0; discriminate); try (rewrite H0; reflexivity).
-  - intros. destruct H. split.
-    + intros. simpl in H1. simpl. apply preservation with (t' := t') in H.
-      split. assumption. apply evalPreservesHalting in H0.
+      eapply IHT2 in H5; eauto.
+      * symmetry in H5. apply H5 in H'. assumption.
+      * simpl. rewrite H. symmetry in H4. apply inversion_3 in H4.
+        destruct H4. destruct H4. destruct H4. destruct H6. rewrite H7. rewrite H6 in H1.
+        inversion H1. rewrite H9 in H4. apply equality_implies_types_equal in H4.
+        simpl in H4. apply Bool.andb_true_iff in H4. destruct H4. rewrite H4.
+        reflexivity.
+      * simpl. destruct t; try (simpl in H0; discriminate); try (rewrite H0; reflexivity).
+  - intros. split.
+    + intros. simpl. assert (H' := H0).
+      eapply preservation with (T := Bool) (t' := t') in H0; eauto.
+      split.
       * assumption.
-      * destruct H1. assumption.
+      * eapply evalPreservesHalting in H'; eauto. destruct H1. assumption.
+    + intros. simpl in H1. destruct H1. simpl. split.
       * assumption.
-    + intros. simpl in H1. simpl. split. assumption.
-      apply evalPreservesHalting' in H0. assumption.
-      destruct H1. assumption.
+      * eapply evalPreservesHalting' in H0; eauto.
 Qed.
 
 Lemma evalPreservesType: forall (x: nat) (e e': STLCExpr) (T: STLCType),
@@ -526,19 +525,7 @@ Proof.
   - intros. symmetry in H. apply inversion_6 in H. destruct H. destruct H3.
     rewrite H4 in H3. symmetry in H3.
     eapply IHt1 in H; eauto. eapply IHt2 in H4; eauto. eapply IHt3 in H3; eauto.
-    simpl. destruct T.
-    + simpl. apply reducibilityInversion in H. rewrite H.
-      apply reducibilityInversion in H4. rewrite H4.
-      apply reducibilityInversion in H3. rewrite H3.
-      split.
-      * rewrite same_types_are_equal. reflexivity.
-      * admit.
-    + simpl. apply reducibilityInversion in H. rewrite H.
-      apply reducibilityInversion in H4. rewrite H4.
-      apply reducibilityInversion in H3. rewrite H3.
-      simpl. split.
-      * reflexivity.
-      * admit.
+    simpl. eapply reducibilityOfIf; eauto.
   - intros. simpl. simpl in H. destruct PeanoNat.Nat.eq_dec with (n := n) (m := x).
     + assert (e' := e). apply PeanoNat.Nat.eqb_eq in e'. rewrite e'. symmetry in e.
       apply F.add_eq_o with (elt := STLCType) (m := (M.empty STLCType)) (e := Tx) in e.
